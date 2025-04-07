@@ -1,0 +1,61 @@
+name: Run yt.py every 7 hours
+
+on:
+  schedule:
+    - cron: '0 */7 * * *'
+  workflow_dispatch:
+
+jobs:
+  run-script:
+    runs-on: ubuntu-latest
+    # Add environment variables here
+    env:
+      PLAYLIST_URL: ${{ secrets.PLAYLIST_URL }}
+      VIDEO_URL: ${{ secrets.VIDEO_URL }}
+      COOKIES: ${{ secrets.COOKIES }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: |
+          pip install selenium seleniumbase
+
+      - name: Install Chrome
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget unzip libvulkan1
+          wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+          sudo dpkg -i google-chrome-stable_current_amd64.deb || sudo apt-get install -f -y
+          rm -f google-chrome-stable_current_amd64.deb
+
+      - name: Ensure required files exist
+        run: |
+          touch youtube_cookies.json video_url.txt playlist_url.txt
+
+      - name: Restore chrome_profile and youtube_cookies.json
+        uses: actions/cache@v3
+        with:
+          path: |
+            chrome_profile
+            youtube_cookies.json
+          key: chrome-profile-${{ github.run_id }}
+          restore-keys: |
+            chrome-profile-
+
+      - name: Run yt.py script
+        run: python yt.py
+
+      - name: Save chrome_profile and youtube_cookies.json
+        uses: actions/cache@v3
+        with:
+          path: |
+            chrome_profile
+            youtube_cookies.json
+          key: chrome-profile-${{ github.run_id }}
